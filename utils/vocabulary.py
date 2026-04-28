@@ -1,4 +1,6 @@
 import re
+from collections import Counter
+from typing import Optional, List, Dict
 class Vocabulary:
     def __init__(self, min_freq: int = 1):
         self.min_freq = min_freq
