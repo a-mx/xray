@@ -1,7 +1,8 @@
 import os
 import os
 from typing import Tuple, Optional
-from vocabulary import Vocabulary
+from .vocabulary import Vocabulary
+from .dataset import XRayDataset
 import pandas as pd
 import torch
 from torch import Generator

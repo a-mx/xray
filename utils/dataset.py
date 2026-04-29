@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from vocabulary import Vocabulary
+from .vocabulary import Vocabulary
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
