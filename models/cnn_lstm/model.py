@@ -2,27 +2,31 @@ import torch
 import torch.nn as nn
 from typing import Optional
 from torchvision import models
-from torchvision.models import ResNet50_Weights
+from torchvision.models import DenseNet121_Weights
 
 class CNN(nn.Module):
     def __init__(
         self,
         embedding_dim: int,
         train_backbone: bool = False,
-        weights: Optional[ResNet50_Weights] = ResNet50_Weights.IMAGENET1K_V2,
+        weights: Optional[DenseNet121_Weights] = DenseNet121_Weights.IMAGENET1K_V1,
     ):
         super().__init__()
-        resnet = models.resnet50(weights=weights)
-        self.encoder = nn.Sequential(*list(resnet.children())[:-1])
-        self.backbone_out = resnet.fc.in_features
+        densenet = models.densenet121(weights=weights)
+
+        self.features = densenet.features
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.backbone_out = densenet.classifier.in_features
         self.linear = nn.Linear(self.backbone_out, embedding_dim)
 
         if not train_backbone:
-            for p in self.encoder.parameters():
+            for p in self.features.parameters():
                 p.requires_grad = False
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
-        x = self.encoder(images)
+        x = self.features(images)
+        x = torch.relu(x)
+        x = self.pool(x)
         x = torch.flatten(x, 1)
         x = self.linear(x)
         return x
@@ -38,7 +42,7 @@ class CNNLSTM(nn.Module):
         dropout: float = 0.2,
         train_backbone: bool = False,
         padding_idx: int = 0,
-        cnn_weights: Optional[ResNet50_Weights] = ResNet50_Weights.IMAGENET1K_V2,
+        cnn_weights: Optional[DenseNet121_Weights] = DenseNet121_Weights.IMAGENET1K_V1,
     ):
         super().__init__()
         self.padding_idx=padding_idx
@@ -47,8 +51,9 @@ class CNNLSTM(nn.Module):
 
         self.cnn = CNN(embedding_dim, train_backbone, cnn_weights)
         self.embedding = nn.Embedding(num_embeddings, embedding_dim, padding_idx)
-
-        self.lstm = nn.LSTM(embedding_dim, hidden_size, num_layers, batch_first=True, dropout=dropout)
+        
+        self.dropout = dropout if self.num_layers > 1 else 0.0
+        self.lstm = nn.LSTM(embedding_dim, hidden_size, num_layers, batch_first=True, dropout=self.dropout)
 
         self.init_h = nn.Linear(embedding_dim, hidden_size)
         self.init_c = nn.Linear(embedding_dim, hidden_size)

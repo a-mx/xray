@@ -50,14 +50,14 @@ class Trainer:
         self.best_val = float("inf")
 
     def set_backbone_trainable(self, trainable: bool):
-        for p in self.model.cnn.encoder.parameters():
+        for p in self.model.cnn.features.parameters():
             p.requires_grad = trainable
 
     def build_optimizer(self, lr_decoder=1e-3, lr_cnn=1e-5, weight_decay=1e-4):
-        cnn_params = [p for p in self.model.cnn.encoder.parameters() if p.requires_grad]
+        cnn_params = [p for p in self.model.cnn.features.parameters() if p.requires_grad]
         other_params = [
             p for n, p in self.model.named_parameters()
-            if p.requires_grad and not n.startswith("cnn.encoder")
+            if p.requires_grad and not n.startswith("cnn.features")
         ]
 
         param_groups = [

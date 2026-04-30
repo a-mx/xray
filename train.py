@@ -28,7 +28,6 @@ def main():
         dropout=0.2,
         train_backbone=False,
         padding_idx=data.vocab.pad_idx,
-        cnn_weights=ResNet50_Weights.IMAGENET1K_V2,
     ).to(device)
 
     trainer = Trainer(
