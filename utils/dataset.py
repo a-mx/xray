@@ -11,7 +11,6 @@ class XRayDataset(Dataset):
         self,
         df: pd.DataFrame,
         root_dir: str,
-        image_dir: Optional[str],
         image_col: str,
         text_col: str,
         vocab: Vocabulary,
@@ -25,14 +24,13 @@ class XRayDataset(Dataset):
         self.text_col = text_col
         self.vocab = vocab
         self.max_len = max_len
-        self.image_base_dir = os.path.join(root_dir, image_dir) if image_dir else root_dir
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         img_rel_path = self.df.loc[idx, self.image_col]
-        img_path = os.path.join(self.image_base_dir, img_rel_path)
+        img_path = os.path.join("./data/", img_rel_path)
 
         image = Image.open(img_path).convert("RGB")
         if self.transform:

@@ -17,7 +17,6 @@ class ImageDataLoader:
         csv_file_name: str,
         image_col: str = "image",
         text_col: str = "caption",
-        image_dir: Optional[str] = None,
         batch_size: int = 32,
         image_height: int = 224,
         image_width: int = 224,
@@ -30,7 +29,6 @@ class ImageDataLoader:
         self.csv_path = os.path.join(data_dir, csv_file_name)
         self.image_col = image_col
         self.text_col = text_col
-        self.image_dir = image_dir
         self.batch_size = batch_size
         self.image_height = image_height
         self.image_width = image_width
@@ -98,7 +96,6 @@ class ImageDataLoader:
         train_dataset = XRayDataset(
             df=train_df,
             root_dir=self.data_dir,
-            image_dir=self.image_dir,
             image_col=self.image_col,
             text_col=self.text_col,
             vocab=self.vocab,
@@ -108,7 +105,6 @@ class ImageDataLoader:
         val_dataset = XRayDataset(
             df=val_df,
             root_dir=self.data_dir,
-            image_dir=self.image_dir,
             image_col=self.image_col,
             text_col=self.text_col,
             vocab=self.vocab,
@@ -138,11 +134,10 @@ class ImageDataLoader:
 
 if __name__ == "__main__":
     loader = ImageDataLoader(
-        data_dir="./data/iu",
-        image_dir="images/images_normalized",
+        data_dir="./data/mimic-cxr/",
         csv_file_name="labels.csv",
-        image_col="filename",
-        text_col="findings",
+        image_col="image_path",
+        text_col="report",
         batch_size=4,
     )
     train_dl, val_dl = loader.get_loaders()
