@@ -134,6 +134,12 @@ class Trainer:
                     lr_cnn=self.config.lr_cnn,
                     weight_decay=self.config.weight_decay,
                 )
+                self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    self.optimizer,
+                    mode="min",
+                    factor=0.5,
+                    patience=1,
+                )
 
             train_loss = self.run_epoch(self.train_loader, train=True)
             val_loss = self.run_epoch(self.val_loader, train=False)

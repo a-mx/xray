@@ -30,7 +30,7 @@ class XRayDataset(Dataset):
 
     def __getitem__(self, idx):
         img_rel_path = self.df.loc[idx, self.image_col]
-        img_path = os.path.join("./data/", img_rel_path)
+        img_path = os.path.join(self.root_dir, img_rel_path)
 
         image = Image.open(img_path).convert("RGB")
         if self.transform:

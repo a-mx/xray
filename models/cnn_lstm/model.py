@@ -60,6 +60,17 @@ class CNNLSTM(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.classifier = nn.Linear(hidden_size, num_embeddings)
 
+        self.config = {
+            "num_embeddings": num_embeddings,
+            "embedding_dim": embedding_dim,
+            "hidden_size": hidden_size,
+            "num_layers": num_layers,
+            "dropout": dropout,
+            "train_backbone": train_backbone,
+            "padding_idx": padding_idx,
+            "cnn_weights": str(cnn_weights) if cnn_weights is not None else None,
+        }
+
     def init(self, embedding: torch.Tensor):
         h0 = torch.tanh(self.init_h(embedding)).unsqueeze(0)
         c0 = torch.tanh(self.init_c(embedding)).unsqueeze(0)
