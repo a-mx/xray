@@ -54,6 +54,8 @@ class Trainer:
             factor=0.5,
             patience=1,
         )
+        self.use_amp = self.device == "cuda"
+        self.scaler = torch.amp.GradScaler(enabled=self.use_amp)
 
         self.best_val = float("inf")
 
@@ -88,15 +90,17 @@ class Trainer:
             captions = captions.to(self.device, non_blocking=True)
 
             if train:
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
 
-            logits = self.model(images, captions)
-            targets = captions[:, 1:]
-            loss = self.loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+            with torch.amp.autocast(device_type=self.device.type, enabled=self.use_amp):
+                logits = self.model(images, captions)
+                targets = captions[:, 1:]
+                loss = self.loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 
             if train:
-                loss.backward()
-                self.optimizer.step()
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
 
             total_loss += loss.item()
 
