@@ -93,6 +93,9 @@ class ImageDataLoader:
         train_df = df.iloc[train_subset.indices].reset_index(drop=True)
         val_df = df.iloc[val_subset.indices].reset_index(drop=True)
 
+        train_transform = None
+        val_transform = None
+
         train_dataset = XRayDataset(
             df=train_df,
             root_dir=self.data_dir,
@@ -101,6 +104,8 @@ class ImageDataLoader:
             vocab=self.vocab,
             max_len=self.max_len,
             transform=train_transform,
+            use_gpu_loader=False,
+            tensor_root="./data/mimic-cxr_tensors",
         )
         val_dataset = XRayDataset(
             df=val_df,
@@ -110,6 +115,8 @@ class ImageDataLoader:
             vocab=self.vocab,
             max_len=self.max_len,
             transform=val_transform,
+            use_gpu_loader=False,
+            tensor_root="./data/mimic-cxr_tensors",
         )
 
         train_loader = DataLoader(
