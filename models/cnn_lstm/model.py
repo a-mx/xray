@@ -25,7 +25,6 @@ class CNN(nn.Module):
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         x = self.features(images)
-        x = torch.relu(x)
         x = self.pool(x)
         x = torch.flatten(x, 1)
         x = self.linear(x)
@@ -51,6 +50,7 @@ class CNNLSTM(nn.Module):
 
         self.cnn = CNN(embedding_dim, train_backbone, cnn_weights)
         self.embedding = nn.Embedding(num_embeddings, embedding_dim, padding_idx)
+        self.img_proj = nn.Linear(2*embedding_dim, embedding_dim)
         
         self.dropout = dropout if self.num_layers > 1 else 0.0
         self.lstm = nn.LSTM(embedding_dim, hidden_size, num_layers, batch_first=True, dropout=self.dropout)
@@ -83,10 +83,34 @@ class CNNLSTM(nn.Module):
         img_embed = self.cnn(images)
         h0, c0 = self.init(img_embed)
         x = self.embedding(captions[:, :-1])
-        out, _ = self.lstm(x, (h0, c0))
+        img_exp = img_embed.unsqueeze(1).expand(-1, x.size(1), -1)
+        lstm_in = torch.cat([x, img_exp], dim=2)
+        lstm_in = self.img_proj(lstm_in)
+        out, _ = self.lstm(lstm_in, (h0, c0))
         out = self.dropout(out)
         logits = self.classifier(out)
         return logits
     
+    @torch.no_grad()
+    def generate(self, images, start_token_id, end_token_id, max_len=30):
+        self.eval()
+        img_embed = self.cnn(images)
+        batch_size = images.size(0)
+        cur = torch.full((batch_size, 1), start_token_id, dtype=torch.long, device=images.device)
+        h, c = self.init(img_embed)
+
+        outputs = []
+        for _ in range(max_len):
+            x = self.embedding(cur)
+            img_exp = img_embed.unsqueeze(1)
+            concat = torch.cat([x, img_exp], dim=2)
+            lstm_input = self.img_proj(concat)
+            out, (h, c) = self.lstm(lstm_input, (h, c))
+            logits = self.classifier(out[:, -1, :])
+            next_token = torch.argmax(logits, dim=-1, keepdim=True)
+            outputs.append(next_token)
+            cur = next_token
+        return torch.cat(outputs, dim=1)
+
 if __name__ == "__main__":
     pass
