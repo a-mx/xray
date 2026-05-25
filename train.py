@@ -4,6 +4,7 @@ import torch
 
 from utils.dataloader import ImageDataLoader
 from models.cnn_lstm.model import CNNLSTM
+from models.cnn_transformer.model import CNNTransformerDecoder
 from utils.trainer import Trainer, TrainConfig
 
 
@@ -21,12 +22,14 @@ def parse_args():
     p.add_argument("--max-len", type=int, default=48)
     p.add_argument("--min-freq", type=int, default=2)
 
-    p.add_argument("--epochs", type=int, default=30)
-    p.add_argument("--unfreeze-epoch", type=int, default=1)
+    p.add_argument("--epochs", type=int, default=100)
+    p.add_argument("--unfreeze-epoch", type=int, default=20)
     p.add_argument("--lr-decoder", type=float, default=1e-3)
     p.add_argument("--lr-decoder-unfrozen", type=float, default=3e-4)
     p.add_argument("--lr-cnn", type=float, default=3e-5)
     p.add_argument("--weight-decay", type=float, default=1e-4)
+    p.add_argument("--model-type", type=str, default="cnn_lstm", choices=["cnn_lstm", "cnn_transformer"])
+    p.add_argument("--nhead", type=int, default=8)
 
     p.add_argument("--ckpt", type=str, default=None)
 
@@ -51,33 +54,48 @@ def main():
 
     train_loader, val_loader = data.get_loaders()
 
-    if args.ckpt:
-        ckpt = torch.load(args.ckpt, map_location=device)
+    def build_model(model_type: str, config: dict | None = None):
+        config = config or {}
 
-        model = CNNLSTM(
-            num_embeddings=ckpt["config"]["num_embeddings"],
-            embedding_dim=ckpt["config"]["embedding_dim"],
-            hidden_size=ckpt["config"]["hidden_size"],
-            num_layers=ckpt["config"]["num_layers"],
-            dropout=ckpt["config"]["dropout"],
-            padding_idx=ckpt["config"]["padding_idx"],
+        if model_type == "cnn_transformer":
+            return CNNTransformerDecoder(
+                num_embeddings=config.get("num_embeddings", len(data.vocab.stoi)),
+                embedding_dim=config.get("embedding_dim", 256),
+                hidden_size=config.get("hidden_size", 512),
+                num_layers=config.get("num_layers", 2),
+                nhead=config.get("nhead", args.nhead),
+                dropout=config.get("dropout", 0.2),
+                padding_idx=config.get("padding_idx", data.vocab.pad_idx),
+                max_len=config.get("max_len", args.max_len),
+                train_backbone=False,
+            ).to(device)
+
+        return CNNLSTM(
+            num_embeddings=config.get("num_embeddings", len(data.vocab.stoi)),
+            embedding_dim=config.get("embedding_dim", 256),
+            hidden_size=config.get("hidden_size", 512),
+            num_layers=config.get("num_layers", 1),
+            dropout=config.get("dropout", 0.2),
+            padding_idx=config.get("padding_idx", data.vocab.pad_idx),
             train_backbone=False,
         ).to(device)
+
+    if args.ckpt:
+        ckpt = torch.load(args.ckpt, map_location=device)
+        ckpt_config = ckpt["config"]
+        model_type = ckpt_config.get("model_type")
+        if model_type is None:
+            model_type = "cnn_transformer" if "nhead" in ckpt_config else "cnn_lstm"
+
+        model = build_model(model_type, ckpt_config)
 
         missing, unexpected = model.load_state_dict(ckpt["model_state_dict"], strict=False)
         print("Loaded ckpt:", args.ckpt)
+        print("model_type:", model_type)
         print("missing:", missing)
         print("unexpected:", unexpected)
     else:
-        model = CNNLSTM(
-            num_embeddings=len(data.vocab.stoi),
-            embedding_dim=256,
-            hidden_size=512,
-            num_layers=1,
-            dropout=0.2,
-            train_backbone=False,
-            padding_idx=data.vocab.pad_idx,
-        ).to(device)
+        model = build_model(args.model_type)
 
     trainer = Trainer(
         model=model,
