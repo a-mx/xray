@@ -5,6 +5,7 @@ from torchvision import transforms
 
 from models.cnn_lstm.model import CNNLSTM
 from models.cnn_transformer.model import CNNTransformerDecoder
+from models.cnn_llm.model import CNNLLM
 
 def main():
     parser = argparse.ArgumentParser()
@@ -42,6 +43,17 @@ def main():
                 cnn_weights=None,
                 nhead=config["nhead"],
                 max_len=ckpt_max_len if ckpt_max_len is not None else args.max_len
+            ).to(device)
+        elif model_type == "cnn_llm":
+                return CNNLLM(
+                num_embeddings=config["num_embeddings"],
+                embedding_dim=config["embedding_dim"],
+                num_layers=config["num_layers"],
+                nhead=config["nhead"],
+                dropout=config["dropout"],
+                padding_idx=config["padding_idx"],
+                max_len=ckpt_max_len if ckpt_max_len is not None else args.max_len,
+                train_backbone=False,
             ).to(device)
 
         return CNNLSTM(
