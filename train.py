@@ -5,6 +5,7 @@ import torch
 from utils.dataloader import ImageDataLoader
 from models.cnn_lstm.model import CNNLSTM
 from models.cnn_transformer.model import CNNTransformerDecoder
+from models.cnn_llm.model import CNNLLM
 from utils.trainer import Trainer, TrainConfig
 
 
@@ -28,7 +29,7 @@ def parse_args():
     p.add_argument("--lr-decoder-unfrozen", type=float, default=3e-4)
     p.add_argument("--lr-cnn", type=float, default=3e-5)
     p.add_argument("--weight-decay", type=float, default=1e-4)
-    p.add_argument("--model-type", type=str, default="cnn_lstm", choices=["cnn_lstm", "cnn_transformer"])
+    p.add_argument("--model-type", type=str, default="cnn_lstm", choices=["cnn_lstm", "cnn_transformer", "cnn_llm"])
     p.add_argument("--nhead", type=int, default=8)
 
     p.add_argument("--ckpt", type=str, default=None)
@@ -62,6 +63,17 @@ def main():
                 num_embeddings=config.get("num_embeddings", len(data.vocab.stoi)),
                 embedding_dim=config.get("embedding_dim", 256),
                 hidden_size=config.get("hidden_size", 512),
+                num_layers=config.get("num_layers", 2),
+                nhead=config.get("nhead", args.nhead),
+                dropout=config.get("dropout", 0.2),
+                padding_idx=config.get("padding_idx", data.vocab.pad_idx),
+                max_len=config.get("max_len", args.max_len),
+                train_backbone=False,
+            ).to(device)
+        elif model_type == "cnn_llm":
+            return CNNLLM(
+                num_embeddings=config.get("num_embeddings", len(data.vocab.stoi)),
+                embedding_dim=config.get("embedding_dim", 256),
                 num_layers=config.get("num_layers", 2),
                 nhead=config.get("nhead", args.nhead),
                 dropout=config.get("dropout", 0.2),
