@@ -14,7 +14,6 @@ class CNN(nn.Module):
         super().__init__()
         densenet = models.densenet121(weights=weights)
         self.features = densenet.features
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
         self.backbone_out = densenet.classifier.in_features
         self.linear = nn.Linear(self.backbone_out, embedding_dim)
         if not train_backbone:
@@ -23,11 +22,9 @@ class CNN(nn.Module):
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         x = self.features(images)
-        x = self.pool(x)
-        x = torch.flatten(x, 1)
+        x = x.flatten(2).transpose(1, 2)
         x = self.linear(x)
         return x
-
 
 class CNNTransformerDecoder(nn.Module):
     def __init__(
@@ -84,7 +81,7 @@ class CNNTransformerDecoder(nn.Module):
 
     def forward(self, images: torch.Tensor, captions: torch.Tensor) -> torch.Tensor:
         img_embed = self.cnn(images)
-        memory = img_embed.unsqueeze(1)
+        memory = img_embed
 
         tgt = captions[:, :-1]
         t = tgt.size(1)
@@ -107,7 +104,7 @@ class CNNTransformerDecoder(nn.Module):
     def generate(self, images, start_token_id, end_token_id, max_len=48):
         self.eval()
         img_embed = self.cnn(images)
-        memory = img_embed.unsqueeze(1)
+        memory = img_embed
 
         batch_size = images.size(0)
         cur = torch.full((batch_size, 1), start_token_id, dtype=torch.long, device=images.device)
